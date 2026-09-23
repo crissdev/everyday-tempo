@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Everyday Tempo
 
-## Getting Started
+A small Next.js + Contentful project to demo headless CMS integration.
+It has two domain objects — activities and clubs.
 
-First, run the development server:
+The app runs with local sample content until Contentful credentials are provided in a `.env` file.
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Contentful model
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create the content types with these exact API identifiers. The GraphQL query in
+`src/lib/cms/contentful.ts` depends on them.
 
-## Learn More
+### `club`
 
-To learn more about Next.js, take a look at the following resources:
+| Field      | API identifier | Type            | Required    |
+|------------|----------------|-----------------|-------------|
+| Name       | `name`         | Short text      | Yes         |
+| Slug       | `slug`         | Short text      | Yes, unique |
+| City       | `city`         | Short text      | Yes         |
+| Summary    | `summary`      | Long text       | Yes         |
+| Hero image | `heroImage`    | Media, one file | No          |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Use `name` as the entry title field.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### `activity`
 
-## Deploy on Vercel
+| Field        | API identifier    | Type                            | Required                             |
+|--------------|-------------------|---------------------------------|--------------------------------------|
+| Title        | `title`           | Short text                      | Yes                                  |
+| Slug         | `slug`            | Short text                      | Yes, unique                          |
+| Summary      | `summary`         | Long text                       | Yes                                  |
+| Details      | `details`         | Long text                       | Yes                                  |
+| Category     | `category`        | Short text                      | Yes; `Move`, `Recover`, or `Connect` |
+| Intensity    | `intensity`       | Short text                      | Yes; `Gentle`, `Moderate`, or `High` |
+| Duration     | `durationMinutes` | Integer                         | Yes                                  |
+| Hero image   | `heroImage`       | Media, one file                 | No                                   |
+| Available at | `availableAt`     | References, many `club` entries | No                                   |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Use `title` as the entry title field.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The repository includes four generated activity images under `public/activities`.
+They are used as a local fallback when an activity has no Contentful media asset,
+so you can learn the content flow first and add asset uploads later.
+
+## Environment variables
+
+```bash
+CONTENTFUL_SPACE_ID=your_space_id
+CONTENTFUL_ENVIRONMENT=master
+CONTENTFUL_DELIVERY_TOKEN=your_delivery_api_token
+CONTENTFUL_REVALIDATE_SECRET=a_long_random_value
+```
+
+Only server code reads these values. Do not prefix them with `NEXT_PUBLIC_`.
+
+## Publishing flow
+
+1. An editor changes and publishes an activity or club in Contentful.
+2. Contentful sends a `POST` webhook to `/api/revalidate`.
+3. The webhook includes `x-contentful-webhook-secret` with the same value as
+   `CONTENTFUL_REVALIDATE_SECRET`.
+4. Next.js invalidates the `contentful-wellness` cache tag and refreshes the
+   content on the next request.
+
+The webhook will be useful after the app has a public deployment URL. Locally,
+restart the development server after changing environment variables.
+
+## Important files
+
+- `src/lib/cms/contentful.ts` — GraphQL query, response mapping, caching
+- `src/lib/cms/types.ts` — app-owned domain types
+- `src/lib/cms/sample-content.ts` — explicit development fallback
+- `src/app/api/revalidate/route.ts` — authenticated Contentful webhook target
+- `src/app/activities/[slug]/page.tsx` — activity detail route
+- `src/app/clubs/[slug]/page.tsx` — club detail route
+
+## Verify
+
+```bash
+pnpm lint
+pnpm exec next typegen
+pnpm exec tsc --noEmit
+pnpm exec next build --webpack
+```
+
+The webpack build command is useful in restricted environments where Turbopack
+cannot open its internal worker port.
