@@ -89,7 +89,7 @@ a {
   width: min(1380px, 100%);
   min-height: 650px;
   margin: -87px auto 0;
-  padding: 174px max(24px, calc((100% - 1180px) / 2)) 88px;
+  padding: 174px clamp(24px, calc((100vw - 1180px) / 2), 100px) 88px;
   grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
   overflow: hidden;
