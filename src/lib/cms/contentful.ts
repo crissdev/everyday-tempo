@@ -133,7 +133,6 @@ function mapIntensity(value: string | null | undefined): ActivityIntensity {
 function mapActivity(entry: ContentfulActivity): Activity {
   const linkedClubs = entry.availableAtCollection?.items || [];
   const slug = required(entry.slug, "activity slug");
-  const localImage = sampleContent.activities.find((activity) => activity.slug === slug)?.heroImage;
 
   return {
     id: required(entry.sys?.id, "activity id"),
@@ -144,7 +143,7 @@ function mapActivity(entry: ContentfulActivity): Activity {
     category: mapCategory(entry.category),
     intensity: mapIntensity(entry.intensity),
     durationMinutes: entry.durationMinutes || 45,
-    heroImage: mapImage(entry.heroImage) || localImage,
+    heroImage: mapImage(entry.heroImage),
     clubs: linkedClubs.filter((item): item is ContentfulClub => Boolean(item)).map(mapClub),
   };
 }

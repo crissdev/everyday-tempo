@@ -48,9 +48,9 @@ Use `name` as the entry title field.
 
 Use `title` as the entry title field.
 
-The repository includes four generated activity images under `public/activities`.
-They are used as a local fallback when an activity has no Contentful media asset,
-so you can learn the content flow first and add asset uploads later.
+The repository includes four generated activity images under `public/activities`
+for the local sample content. Activities loaded from Contentful only use their
+Contentful media asset; an activity without one has no hero image.
 
 ## Environment variables
 
