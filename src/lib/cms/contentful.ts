@@ -52,6 +52,12 @@ type ContentfulResponse = {
   errors?: Array<{ message?: string }>;
 };
 
+type ContentfulConfig = {
+  spaceId: string;
+  accessToken: string;
+  environment: string;
+};
+
 const wellnessQuery = `
   query WellnessContent {
     clubCollection(limit: 50, order: name_ASC) {
@@ -148,17 +154,28 @@ function mapActivity(entry: ContentfulActivity): Activity {
   };
 }
 
-export function isContentfulConfigured(): boolean {
-  return Boolean(process.env.CONTENTFUL_SPACE_ID && process.env.CONTENTFUL_DELIVERY_TOKEN);
-}
-
-async function loadContentfulContent(): Promise<WellnessContent> {
+function getContentfulConfig(): ContentfulConfig | null {
   const spaceId = process.env.CONTENTFUL_SPACE_ID;
   const accessToken = process.env.CONTENTFUL_DELIVERY_TOKEN;
-  const environment = process.env.CONTENTFUL_ENVIRONMENT || "master";
 
-  if (!spaceId || !accessToken) return sampleContent;
+  if (!spaceId || !accessToken) return null;
 
+  return {
+    spaceId,
+    accessToken,
+    environment: process.env.CONTENTFUL_ENVIRONMENT || "master",
+  };
+}
+
+export function isContentfulConfigured(): boolean {
+  return getContentfulConfig() !== null;
+}
+
+async function fetchContentfulContent({
+  spaceId,
+  accessToken,
+  environment,
+}: ContentfulConfig): Promise<ContentfulResponse> {
   const response = await fetch(
     `https://graphql.contentful.com/content/v1/spaces/${spaceId}/environments/${environment}`,
     {
@@ -181,6 +198,14 @@ async function loadContentfulContent(): Promise<WellnessContent> {
     throw new Error(payload.errors.map((error) => error.message).join("; "));
   }
 
+  return payload;
+}
+
+async function loadContentfulContent(): Promise<WellnessContent> {
+  const config = getContentfulConfig();
+  if (!config) return sampleContent;
+
+  const payload = await fetchContentfulContent(config);
   const clubs = (payload.data?.clubCollection?.items || [])
     .filter((item): item is ContentfulClub => Boolean(item))
     .map(mapClub);
